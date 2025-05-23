@@ -37,7 +37,8 @@ export async function downloadStoryAsPDF(story: GeneratedStory): Promise<void> {
     yPosition += 20;
     
     // Adicionar imagem se disponível
-    if (page.imageUrl) {
+    const imageUrl = page.imageUrl;
+    if (imageUrl) {
       try {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -87,7 +88,7 @@ export async function downloadStoryAsPDF(story: GeneratedStory): Promise<void> {
             resolve(void 0); // Continue sem a imagem
           };
           
-          img.src = page.imageUrl;
+          img.src = imageUrl;
         });
       } catch (error) {
         console.warn('Erro ao adicionar imagem ao PDF:', error);
