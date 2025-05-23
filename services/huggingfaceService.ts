@@ -276,10 +276,16 @@ export const checkHuggingFaceAvailability = async (): Promise<boolean> => {
 export const getHuggingFaceStatus = () => {
   const hfToken = getHfToken();
   
+  // Calcula isValidToken separadamente para garantir tipo boolean
+  const tokenExists = !!hfToken;
+  const startsWithHf = tokenExists && hfToken.startsWith('hf_');
+  const hasValidLength = tokenExists && hfToken.length > 30;
+  const isValidToken: boolean = tokenExists && startsWithHf && hasValidLength;
+  
   return {
     hasToken: !!hfToken && hfToken.length > 20,
     tokenLength: hfToken ? hfToken.length : 0,
-    isValidToken: !!(hfToken && hfToken.startsWith('hf_') && hfToken.length > 30),
+    isValidToken,
     availableModels: WORKING_MODELS.length,
     fallbackAvailable: true
   };
