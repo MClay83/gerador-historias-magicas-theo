@@ -279,7 +279,7 @@ export const getHuggingFaceStatus = () => {
   return {
     hasToken: !!hfToken && hfToken.length > 20,
     tokenLength: hfToken ? hfToken.length : 0,
-    isValidToken: Boolean(hfToken && hfToken.startsWith('hf_') && hfToken.length > 30),
+    isValidToken: !!(hfToken && hfToken.startsWith('hf_') && hfToken.length > 30),
     availableModels: WORKING_MODELS.length,
     fallbackAvailable: true
   };
