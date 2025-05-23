@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GeneratedStory, StoryPage } from '../types';
+import { GeneratedStory } from '../types';
 
 // Configuração da API do Google Gemini
 const apiKey = import.meta.env.VITE_API_KEY;
@@ -95,8 +95,9 @@ export const generateStoryAndImagePrompts = async (
     let parsedData: GeneratedStory;
     try {
       parsedData = JSON.parse(jsonStr) as GeneratedStory;
-    } catch (parseError) {
-      console.error("❌ Erro ao fazer parse do JSON:", parseError);
+    } catch (parseError: unknown) {
+      const errorMsg = parseError instanceof Error ? parseError.message : 'Erro desconhecido no parse';
+      console.error("❌ Erro ao fazer parse do JSON:", errorMsg);
       console.log("🔍 JSON problemático:", jsonStr);
       
       // Tentativa de correção mais agressiva
@@ -110,7 +111,7 @@ export const generateStoryAndImagePrompts = async (
         correctedJson = correctedJson.replace(/regex":[^,}]*/g, '');
         
         // Remove linhas órfãs e malformadas mais agressivamente
-        correctedJson = correctedJson.replace(/[^"{}\[\],:]+regex"[^,}]*/g, '');
+        correctedJson = correctedJson.replace(/[^"{}[\],:]+regex"[^,}]*/g, '');
         correctedJson = correctedJson.replace(/\s*regex":\s*"[^"]*"[^,}]*/g, '');
         
         // Limpa espaços extras e quebras de linha problemáticas
@@ -123,8 +124,9 @@ export const generateStoryAndImagePrompts = async (
         parsedData = JSON.parse(correctedJson) as GeneratedStory;
         console.log("✅ Parse bem-sucedido após correção agressiva!");
         
-      } catch (secondError) {
-        console.error("❌ Falha na correção automática do JSON:", secondError);
+      } catch (secondError: unknown) {
+        const secondErrorMsg = secondError instanceof Error ? secondError.message : 'Erro desconhecido na segunda tentativa';
+        console.error("❌ Falha na correção automática do JSON:", secondErrorMsg);
         
         // Último recurso: reconstrução manual do JSON
         console.log("🚨 Tentando reconstrução manual do JSON...");
@@ -160,9 +162,10 @@ export const generateStoryAndImagePrompts = async (
           console.log("🔨 JSON reconstruído:", JSON.stringify(reconstructedData));
           parsedData = reconstructedData as GeneratedStory;
           
-        } catch (thirdError) {
-          console.error("❌ Falha na reconstrução manual do JSON:", thirdError);
-          throw new Error(`JSON inválido retornado pelo Gemini. Erro: ${parseError.message}`);
+        } catch (thirdError: unknown) {
+          const thirdErrorMsg = thirdError instanceof Error ? thirdError.message : 'Erro desconhecido na reconstrução';
+          console.error("❌ Falha na reconstrução manual do JSON:", thirdErrorMsg);
+          throw new Error(`JSON inválido retornado pelo Gemini. Erro: ${errorMsg}`);
         }
       }
     }
@@ -179,12 +182,13 @@ export const generateStoryAndImagePrompts = async (
     console.log("✅ História gerada com sucesso:", parsedData.title);
     return parsedData;
 
-  } catch (error) {
-    console.error("❌ Erro ao gerar história com Gemini:", error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Erro ao gerar história com Gemini:", errorMsg);
     if (error instanceof Error && error.message.includes("API key not valid")) {
         throw new Error("Chave de API inválida. Por favor, verifique sua configuração.");
     }
-    throw new Error(`Falha ao gerar texto da história para Theo: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Falha ao gerar texto da história para Theo: ${errorMsg}`);
   }
 };
 
@@ -212,8 +216,9 @@ export const generateImageForPrompt = async (
     console.log("✅ Imagem gerada com sucesso via Gemini");
     return imageData;
 
-  } catch (error) {
-    console.error("❌ Erro ao gerar imagem com Gemini:", error);
-    throw new Error(`Falha ao gerar imagem para Theo: ${error instanceof Error ? error.message : String(error)}`);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Erro ao gerar imagem com Gemini:", errorMsg);
+    throw new Error(`Falha ao gerar imagem para Theo: ${errorMsg}`);
   }
 };
