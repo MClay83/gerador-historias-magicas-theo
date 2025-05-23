@@ -1,0 +1,40 @@
+{
+  "name": "Gerador de Histórias Mágicas para Theo",
+  "short_name": "Histórias Theo",
+  "description": "Crie histórias mágicas personalizadas para crianças com ilustrações de IA",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#6366f1",
+  "background_color": "#667eea",
+  "scope": "/",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%236366f1'/%3E%3Ctext x='100' y='100' font-size='100' text-anchor='middle' dominant-baseline='middle' fill='white'%3E🌟%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%236366f1'/%3E%3Ctext x='256' y='256' font-size='300' text-anchor='middle' dominant-baseline='middle' fill='white'%3E🌟%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["education", "entertainment", "kids"],
+  "shortcuts": [
+    {
+      "name": "Nova História",
+      "short_name": "Nova",
+      "description": "Criar uma nova história para Theo",
+      "url": "/",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%2334d399'/%3E%3Ctext x='100' y='100' font-size='100' text-anchor='middle' dominant-baseline='middle' fill='white'%3E✨%3C/text%3E%3C/svg%3E",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
