@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeneratedStory, StoryPage } from '../types';
 
 // Configuração da API do Google Gemini
@@ -7,11 +7,11 @@ if (!apiKey) {
   console.warn('⚠️ VITE_API_KEY não configurada. Configure no arquivo .env para usar geração de histórias.');
 }
 
-// Initialize GoogleGenAI client
-let ai: GoogleGenAI | null = null;
-const getAIClient = (): GoogleGenAI => {
+// Initialize GoogleGenerativeAI client
+let ai: GoogleGenerativeAI | null = null;
+const getAIClient = (): GoogleGenerativeAI => {
     if (!ai) {
-        ai = new GoogleGenAI({ apiKey: apiKey });
+        ai = new GoogleGenerativeAI(apiKey || '');
     }
     return ai;
 }
@@ -24,6 +24,8 @@ export const generateStoryAndImagePrompts = async (
   modelName: string
 ): Promise<GeneratedStory> => {
   const client = getAIClient();
+  const model = client.getGenerativeModel({ model: modelName });
+  
   const prompt = `
     Você é um contador de histórias amigável e criativo para um menino de 6 anos chamado Theo. Crie uma história especialmente para ele.
     Suas histórias são sempre positivas, imaginativas, apropriadas para a idade e fáceis de entender.
@@ -68,18 +70,10 @@ export const generateStoryAndImagePrompts = async (
   `;
 
   try {
-    const response: GenerateContentResponse = await client.models.generateContent({
-      model: modelName,
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-      }
-    });
-
-    let jsonStr = response.text.trim();
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let jsonStr = response.text().trim();
+    
     console.log("📝 Resposta bruta do Gemini:", jsonStr);
     
     // Remove caracteres problemáticos que podem causar erro de parsing
@@ -92,7 +86,9 @@ export const generateStoryAndImagePrompts = async (
       .replace(/,(\s*[}\]])/g, '$1') // Remove vírgulas antes de } ou ]
       .replace(/([}\]])(\s*)([{\[])/g, '$1,$2$3') // Adiciona vírgulas entre objetos/arrays se necessário
       .replace(/}\s*{/g, '},{') // Adiciona vírgulas entre objetos adjacentes
-      .replace(/]\s*\[/g, '],['); // Adiciona vírgulas entre arrays adjacentes
+      .replace(/]\s*\[/g, '],[') // Adiciona vírgulas entre arrays adjacentes
+      .replace(/```json\n?/g, '') // Remove marcadores de código
+      .replace(/```\n?/g, ''); // Remove marcadores de código
     
     console.log("🧹 JSON limpo:", jsonStr);
     
@@ -105,7 +101,7 @@ export const generateStoryAndImagePrompts = async (
       
       // Tentativa de correção mais agressiva
       try {
-        console.log("🔧 JSON corrigido:", jsonStr);
+        console.log("🔧 Tentando correção JSON...");
         // Tenta corrigir removendo linhas completamente malformadas
         let correctedJson = jsonStr;
         
@@ -197,27 +193,17 @@ export const generateImageForPrompt = async (
   modelName: string
 ): Promise<string> => {
   const client = getAIClient();
+  const model = client.getGenerativeModel({ model: modelName });
+  
   // Prompt mais específico e detalhado para garantir estilo cartoon infantil
   const enhancedPrompt = `${prompt}. Estilo cartoon infantil, colorido, lúdico, para crianças de 6 anos, sem realismo, arte digital vibrante.`;
   
   try {
-    const response: GenerateContentResponse = await client.models.generateContent({
-      model: modelName,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: enhancedPrompt }]
-        }
-      ],
-      config: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-      }
-    });
+    const result = await model.generateContent(enhancedPrompt);
+    const response = await result.response;
 
     // Assumindo que a resposta contém uma URL ou dados da imagem
-    const imageData = response.text.trim();
+    const imageData = response.text().trim();
     
     if (!imageData) {
       throw new Error("Resposta vazia da API de geração de imagem");
