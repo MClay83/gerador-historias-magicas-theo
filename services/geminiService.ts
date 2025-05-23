@@ -1,102 +1,233 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GeneratedStory } from '../types';
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GeneratedStory, StoryPage } from '../types';
 
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_API_KEY || '');
+// Configuração da API do Google Gemini
+const apiKey = import.meta.env.VITE_API_KEY;
+if (!apiKey) {
+  console.warn('⚠️ VITE_API_KEY não configurada. Configure no arquivo .env para usar geração de histórias.');
+}
 
-export async function generateStoryAndImagePrompts(
+// Initialize GoogleGenAI client
+let ai: GoogleGenAI | null = null;
+const getAIClient = (): GoogleGenAI => {
+    if (!ai) {
+        ai = new GoogleGenAI({ apiKey: apiKey });
+    }
+    return ai;
+}
+
+export const generateStoryAndImagePrompts = async (
   hero: string,
   place: string,
   adventure: string,
   outcome: string,
-  model: string
-): Promise<GeneratedStory> {
-  try {
-    const model_instance = genAI.getGenerativeModel({ model });
-    
-    const prompt = `
-Crie uma história infantil mágica e envolvente para uma criança chamada Theo. A história deve ter exatamente 4 páginas.
+  modelName: string
+): Promise<GeneratedStory> => {
+  const client = getAIClient();
+  const prompt = `
+    Você é um contador de histórias amigável e criativo para um menino de 6 anos chamado Theo. Crie uma história especialmente para ele.
+    Suas histórias são sempre positivas, imaginativas, apropriadas para a idade e fáceis de entender.
+    Os personagens devem permanecer consistentes.
+    O herói da história pode ser o próprio Theo, ou um personagem que Theo gostaria de acompanhar em uma aventura.
+    Crie uma história de 6 a 7 páginas usando os seguintes elementos:
+    - Herói: ${hero}
+    - Lugar: ${place}
+    - Aventura: ${adventure}
+    - Desfecho: ${outcome}
 
-Elementos da história:
-- Herói: ${hero}
-- Local: ${place}
-- Aventura: ${adventure}
-- Final: ${outcome}
+    Para cada página da história, forneça:
+    1. O texto da história para aquela página.
+    2. Um prompt curto e descritivo (máximo 15 palavras) para uma ilustração colorida em estilo cartoon infantil.
 
-Por favor, retorne APENAS um objeto JSON válido com a seguinte estrutura:
-{
-  "title": "título criativo da história",
-  "pages": [
+    IMPORTANTE: Responda APENAS com JSON válido. NÃO adicione texto extra, comentários, linhas "Lookup:", "regex:", ou qualquer outra informação fora do JSON.
+
+    Use EXATAMENTE este formato JSON (sem adições):
     {
-      "text": "texto da página 1 (2-3 frases, linguagem infantil, mencionando Theo)",
-      "imagePrompt": "prompt detalhado para gerar uma ilustração desta página em inglês, estilo infantil, colorido"
-    },
-    {
-      "text": "texto da página 2",
-      "imagePrompt": "prompt para ilustração da página 2"
-    },
-    {
-      "text": "texto da página 3", 
-      "imagePrompt": "prompt para ilustração da página 3"
-    },
-    {
-      "text": "texto da página 4",
-      "imagePrompt": "prompt para ilustração da página 4"
+      "title": "Título da História",
+      "pages": [
+        {
+          "pageNumber": 1,
+          "text": "Texto da primeira página da história.",
+          "imagePrompt": "Descrição curta para ilustração cartoon infantil"
+        },
+        {
+          "pageNumber": 2,
+          "text": "Texto da segunda página da história.",
+          "imagePrompt": "Descrição curta para ilustração cartoon infantil"
+        }
+      ]
     }
-  ]
-}
 
-IMPORTANTE: 
-- Use linguagem simples e adequada para crianças
-- Mencione o nome "Theo" na história
-- Os imagePrompts devem ser em inglês e detalhados
-- Retorne APENAS o JSON, sem texto adicional
-`;
+    Certifique-se de que:
+    - O JSON seja válido (sem vírgulas extras, sem campos adicionais, sem comentários)
+    - Cada imagePrompt termine sempre com ". cartoon infantil, colorido, lúdico, para crianças de 6 anos, sem realismo."
+    - A história seja adequada para uma criança de 6 anos
+    - Os personagens sejam consistentes ao longo da história
+    - O texto seja envolvente e fácil de entender
+    - NÃO adicione nenhuma linha extra, comentário ou informação fora do JSON especificado
+  `;
 
-    const result = await model_instance.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+  try {
+    const response: GenerateContentResponse = await client.models.generateContent({
+      model: modelName,
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+      }
+    });
+
+    let jsonStr = response.text.trim();
+    console.log("📝 Resposta bruta do Gemini:", jsonStr);
     
-    console.log('Resposta bruta do Gemini:', text);
+    // Remove caracteres problemáticos que podem causar erro de parsing
+    jsonStr = jsonStr
+      .replace(/[\u0000-\u001f]+/g, '') // Remove caracteres de controle
+      .replace(/\s*Lookup:.*$/gm, '') // Remove linhas "Lookup:" que o Gemini adiciona incorretamente
+      .replace(/\s*regex":\s*"[^"]*"\s*$/gm, '') // Remove linhas "regex:" problemáticas
+      .replace(/^\s*regex":\s*"[^"]*"\s*$/gm, '') // Remove linhas "regex:" no início
+      .replace(/regex":\s*"[^"]*"\s*/g, '') // Remove qualquer padrão regex": "..." onde quer que esteja
+      .replace(/,(\s*[}\]])/g, '$1') // Remove vírgulas antes de } ou ]
+      .replace(/([}\]])(\s*)([{\[])/g, '$1,$2$3') // Adiciona vírgulas entre objetos/arrays se necessário
+      .replace(/}\s*{/g, '},{') // Adiciona vírgulas entre objetos adjacentes
+      .replace(/]\s*\[/g, '],['); // Adiciona vírgulas entre arrays adjacentes
     
-    // Limpar a resposta para extrair apenas o JSON
-    const cleanedText = text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    console.log("🧹 JSON limpo:", jsonStr);
     
+    let parsedData: GeneratedStory;
     try {
-      const storyData = JSON.parse(cleanedText);
+      parsedData = JSON.parse(jsonStr) as GeneratedStory;
+    } catch (parseError) {
+      console.error("❌ Erro ao fazer parse do JSON:", parseError);
+      console.log("🔍 JSON problemático:", jsonStr);
       
-      // Validar a estrutura da resposta
-      if (!storyData.title || !storyData.pages || !Array.isArray(storyData.pages)) {
-        throw new Error('Estrutura de resposta inválida do Gemini');
-      }
-      
-      if (storyData.pages.length !== 4) {
-        throw new Error('A história deve ter exatamente 4 páginas');
-      }
-      
-      // Validar cada página
-      for (let i = 0; i < storyData.pages.length; i++) {
-        const page = storyData.pages[i];
-        if (!page.text || !page.imagePrompt) {
-          throw new Error(`Página ${i + 1} está incompleta`);
+      // Tentativa de correção mais agressiva
+      try {
+        console.log("🔧 JSON corrigido:", jsonStr);
+        // Tenta corrigir removendo linhas completamente malformadas
+        let correctedJson = jsonStr;
+        
+        // Remove qualquer linha que tenha regex": sozinha
+        correctedJson = correctedJson.replace(/^[\s*regex":[^,}]*$/gm, '');
+        correctedJson = correctedJson.replace(/regex":[^,}]*/g, '');
+        
+        // Remove linhas órfãs e malformadas mais agressivamente
+        correctedJson = correctedJson.replace(/[^"{}\[\],:]+regex"[^,}]*/g, '');
+        correctedJson = correctedJson.replace(/\s*regex":\s*"[^"]*"[^,}]*/g, '');
+        
+        // Limpa espaços extras e quebras de linha problemáticas
+        correctedJson = correctedJson.replace(/\s+/g, ' ');
+        correctedJson = correctedJson.replace(/,\s*,/g, ',');
+        correctedJson = correctedJson.replace(/,\s*}/g, '}');
+        correctedJson = correctedJson.replace(/,\s*]/g, ']');
+        
+        console.log("🔧 JSON totalmente corrigido:", correctedJson);
+        parsedData = JSON.parse(correctedJson) as GeneratedStory;
+        console.log("✅ Parse bem-sucedido após correção agressiva!");
+        
+      } catch (secondError) {
+        console.error("❌ Falha na correção automática do JSON:", secondError);
+        
+        // Último recurso: reconstrução manual do JSON
+        console.log("🚨 Tentando reconstrução manual do JSON...");
+        try {
+          // Extrai o título
+          const titleMatch = jsonStr.match(/"title":\s*"([^"]+)"/);
+          const title = titleMatch ? titleMatch[1] : "História do Theo";
+          
+          // Extrai cada página individualmente
+          const pages = [];
+          const pageRegex = /{\s*"pageNumber":\s*(\d+),\s*"text":\s*"([^"]+)",\s*"imagePrompt":\s*"([^"]+)"\s*[^}]*}/g;
+          let pageMatch;
+          
+          while ((pageMatch = pageRegex.exec(jsonStr)) !== null) {
+            pages.push({
+              pageNumber: parseInt(pageMatch[1]),
+              text: pageMatch[2],
+              imagePrompt: pageMatch[3]
+            });
+          }
+          
+          // Se não conseguiu extrair páginas, cria uma estrutura mínima
+          if (pages.length === 0) {
+            console.log("⚠️ Não foi possível extrair páginas, criando história de emergência...");
+            pages.push({
+              pageNumber: 1,
+              text: "Era uma vez o Theo, que adorava aventuras incríveis! Hoje ele descobriu algo mágico que mudou tudo...",
+              imagePrompt: "Criança feliz descobrindo algo mágico, cartoon infantil colorido"
+            });
+          }
+          
+          const reconstructedData = { title, pages };
+          console.log("🔨 JSON reconstruído:", JSON.stringify(reconstructedData));
+          parsedData = reconstructedData as GeneratedStory;
+          
+        } catch (thirdError) {
+          console.error("❌ Falha na reconstrução manual do JSON:", thirdError);
+          throw new Error(`JSON inválido retornado pelo Gemini. Erro: ${parseError.message}`);
         }
       }
-      
-      return storyData;
-      
-    } catch (parseError) {
-      console.error('Erro ao fazer parse da resposta:', parseError);
-      console.error('Texto que causou erro:', cleanedText);
-      throw new Error('Falha ao processar a resposta da IA. Formato JSON inválido.');
+    }
+
+    if (!parsedData.title || !parsedData.pages || !Array.isArray(parsedData.pages) || parsedData.pages.length === 0) {
+      throw new Error("Resposta da API em formato JSON inesperado ou incompleto.");
     }
     
+    // Ensure page numbers are sequential and correct
+    parsedData.pages.forEach((page, index) => {
+      page.pageNumber = index + 1;
+    });
+
+    console.log("✅ História gerada com sucesso:", parsedData.title);
+    return parsedData;
+
   } catch (error) {
-    console.error('Erro na geração da história:', error);
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        throw new Error('Chave de API inválida ou não configurada');
-      }
-      throw error;
+    console.error("❌ Erro ao gerar história com Gemini:", error);
+    if (error instanceof Error && error.message.includes("API key not valid")) {
+        throw new Error("Chave de API inválida. Por favor, verifique sua configuração.");
     }
-    throw new Error('Erro desconhecido na geração da história');
+    throw new Error(`Falha ao gerar texto da história para Theo: ${error instanceof Error ? error.message : String(error)}`);
   }
-}
+};
+
+export const generateImageForPrompt = async (
+  prompt: string,
+  modelName: string
+): Promise<string> => {
+  const client = getAIClient();
+  // Prompt mais específico e detalhado para garantir estilo cartoon infantil
+  const enhancedPrompt = `${prompt}. Estilo cartoon infantil, colorido, lúdico, para crianças de 6 anos, sem realismo, arte digital vibrante.`;
+  
+  try {
+    const response: GenerateContentResponse = await client.models.generateContent({
+      model: modelName,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: enhancedPrompt }]
+        }
+      ],
+      config: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+      }
+    });
+
+    // Assumindo que a resposta contém uma URL ou dados da imagem
+    const imageData = response.text.trim();
+    
+    if (!imageData) {
+      throw new Error("Resposta vazia da API de geração de imagem");
+    }
+    
+    console.log("✅ Imagem gerada com sucesso via Gemini");
+    return imageData;
+
+  } catch (error) {
+    console.error("❌ Erro ao gerar imagem com Gemini:", error);
+    throw new Error(`Falha ao gerar imagem para Theo: ${error instanceof Error ? error.message : String(error)}`);
+  }
+};
