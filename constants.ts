@@ -112,9 +112,9 @@ export type ImageProvider = typeof IMAGE_PROVIDERS[keyof typeof IMAGE_PROVIDERS]
 // Default image provider (Hugging Face é gratuito)
 export const DEFAULT_IMAGE_PROVIDER: ImageProvider = IMAGE_PROVIDERS.HUGGINGFACE;
 
-// Hugging Face models for child-friendly images
-export const HUGGINGFACE_MODELS = {
-  STABLE_DIFFUSION_V1_5: 'runwayml/stable-diffusion-v1-5',
-  STABLE_DIFFUSION_V2_1: 'stabilityai/stable-diffusion-2-1',
-  STABLE_DIFFUSION_V1_4: 'CompVis/stable-diffusion-v1-4'
-} as const;
+// Hugging Face models for child-friendly images - formato array para compatibilidade
+export const HUGGINGFACE_MODELS = [
+  'stabilityai/stable-diffusion-xl-base-1.0',
+  'runwayml/stable-diffusion-v1-5',
+  'prompthero/openjourney-v4'
+];
