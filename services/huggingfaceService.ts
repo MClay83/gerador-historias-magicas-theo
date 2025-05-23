@@ -100,14 +100,17 @@ export async function generateImageWithHuggingFace(prompt: string, pageIndex: nu
         }
       });
       
-      // Check if result is a Blob
-      if (result instanceof Blob && result.size > 0) {
-        const imageUrl = URL.createObjectURL(result);
-        console.log(`✅ Imagem gerada com sucesso usando ${modelId}`);
-        return imageUrl;
-      } else {
-        throw new Error('Resposta inválida do modelo');
+      // Type-safe check for Blob response
+      if (result && typeof result === 'object' && 'size' in result && 'type' in result) {
+        const blob = result as Blob;
+        if (blob.size > 0) {
+          const imageUrl = URL.createObjectURL(blob);
+          console.log(`✅ Imagem gerada com sucesso usando ${modelId}`);
+          return imageUrl;
+        }
       }
+      
+      throw new Error('Resposta inválida do modelo');
       
     } catch (error) {
       console.warn(`⚠️ Modelo ${modelId} falhou:`, error);
