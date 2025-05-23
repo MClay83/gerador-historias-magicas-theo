@@ -27,7 +27,6 @@ const generateContextAwareSVG = (prompt: string, pageNumber: number): string => 
   const isOcean = lowerPrompt.includes('mar') || lowerPrompt.includes('oceano') || lowerPrompt.includes('praia');
   const isDragon = lowerPrompt.includes('dragão') || lowerPrompt.includes('dragao');
   const isNight = lowerPrompt.includes('noite') || lowerPrompt.includes('escuro') || lowerPrompt.includes('lua');
-  const isSun = lowerPrompt.includes('sol') || lowerPrompt.includes('dia') || lowerPrompt.includes('brilhante');
   
   // Cores baseadas no contexto
   let primaryColor = '#4A90E2';
@@ -209,17 +208,21 @@ export const generateImageWithHuggingFace = async (
           }
         });
 
-        // Verifica se a resposta é válida
-        if (response && response instanceof Blob && response.size > 1000) {
-          const imageUrl = URL.createObjectURL(response);
-          console.log(`✅ Imagem real gerada com sucesso usando ${model}!`);
-          return imageUrl;
-        } else {
-          throw new Error(`Resposta inválida do modelo ${model}`);
+        // Verifica se a resposta é válida - corrigido para não usar instanceof
+        if (response && typeof response === 'object' && 'size' in response && 'type' in response) {
+          const blob = response as Blob;
+          if (blob.size > 1000) {
+            const imageUrl = URL.createObjectURL(blob);
+            console.log(`✅ Imagem real gerada com sucesso usando ${model}!`);
+            return imageUrl;
+          }
         }
         
-      } catch (modelError) {
-        console.warn(`⚠️ Modelo ${model} falhou:`, modelError);
+        throw new Error(`Resposta inválida do modelo ${model}`);
+        
+      } catch (modelError: unknown) {
+        const errorMsg = modelError instanceof Error ? modelError.message : 'Erro desconhecido';
+        console.warn(`⚠️ Modelo ${model} falhou:`, errorMsg);
         // Continua para o próximo modelo
         continue;
       }
@@ -229,8 +232,9 @@ export const generateImageWithHuggingFace = async (
     console.log('🎨 Todos os modelos HF falharam, usando SVG contextual como fallback');
     return generateContextAwareSVG(prompt, pageNumber + 1);
     
-  } catch (hfError) {
-    console.warn('⚠️ Erro geral na API do Hugging Face:', hfError);
+  } catch (hfError: unknown) {
+    const errorMsg = hfError instanceof Error ? hfError.message : 'Erro desconhecido';
+    console.warn('⚠️ Erro geral na API do Hugging Face:', errorMsg);
     return generateContextAwareSVG(prompt, pageNumber + 1);
   }
 };
@@ -258,10 +262,12 @@ export const checkHuggingFaceAvailability = async (): Promise<boolean> => {
       }
     });
     
-    return testResponse instanceof Blob && testResponse.size > 500;
+    // Verifica se é um Blob válido - corrigido para não usar instanceof
+    return testResponse && typeof testResponse === 'object' && 'size' in testResponse && (testResponse as Blob).size > 500;
     
-  } catch (error) {
-    console.warn('⚠️ Teste de conectividade HF falhou:', error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.warn('⚠️ Teste de conectividade HF falhou:', errorMsg);
     return false;
   }
 };
