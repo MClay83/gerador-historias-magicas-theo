@@ -88,7 +88,7 @@ export async function generateImageWithHuggingFace(prompt: string, pageIndex: nu
     try {
       console.log(`🎨 Tentando modelo ${modelIndex + 1}/${HUGGINGFACE_MODELS.length}: ${modelId}`);
       
-      const blob = await hf.textToImage({
+      const result = await hf.textToImage({
         model: modelId,
         inputs: optimizedPrompt,
         parameters: {
@@ -100,12 +100,13 @@ export async function generateImageWithHuggingFace(prompt: string, pageIndex: nu
         }
       });
       
-      if (blob && blob.size > 0) {
-        const imageUrl = URL.createObjectURL(blob);
+      // Check if result is a Blob
+      if (result instanceof Blob && result.size > 0) {
+        const imageUrl = URL.createObjectURL(result);
         console.log(`✅ Imagem gerada com sucesso usando ${modelId}`);
         return imageUrl;
       } else {
-        throw new Error('Blob vazio retornado pelo modelo');
+        throw new Error('Resposta inválida do modelo');
       }
       
     } catch (error) {
