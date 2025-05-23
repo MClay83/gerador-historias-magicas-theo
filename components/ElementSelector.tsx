@@ -1,53 +1,36 @@
 import React from 'react';
-import { StoryElementCategory } from '../types';
+import { StoryElementCategory, StoryElementOption } from '../types';
 
 interface ElementSelectorProps {
   category: StoryElementCategory;
-  options: string[];
+  options: StoryElementOption[];
   selectedValue: string | null;
   onSelect: (value: string) => void;
 }
 
-const CATEGORY_LABELS = {
-  [StoryElementCategory.HERO]: '🦸 Quem é o herói da sua história?',
-  [StoryElementCategory.PLACE]: '🏰 Onde acontece a aventura?',
-  [StoryElementCategory.ADVENTURE]: '⚔️ Qual é a missão do herói?',
-  [StoryElementCategory.OUTCOME]: '✨ Como termina a história?'
-};
-
-const CATEGORY_COLORS = {
-  [StoryElementCategory.HERO]: 'from-red-400 to-pink-500',
-  [StoryElementCategory.PLACE]: 'from-green-400 to-blue-500',
-  [StoryElementCategory.ADVENTURE]: 'from-purple-400 to-indigo-500',
-  [StoryElementCategory.OUTCOME]: 'from-yellow-400 to-orange-500'
-};
-
-const ElementSelector: React.FC<ElementSelectorProps> = ({ 
-  category, 
-  options, 
-  selectedValue, 
-  onSelect 
-}) => {
+const ElementSelector: React.FC<ElementSelectorProps> = ({ category, options, selectedValue, onSelect }) => {
   return (
-    <div className="space-y-4">
-      <h3 className={`text-xl font-bold bg-gradient-to-r ${CATEGORY_COLORS[category]} bg-clip-text text-transparent`}>
-        {CATEGORY_LABELS[category]}
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {options.map((option) => (
+    <div className="mb-6 p-6 bg-white/70 backdrop-blur-sm rounded-lg shadow-lg transition-all duration-300 hover:shadow-xl">
+      <h3 className="text-2xl font-semibold text-indigo-700 mb-4 text-center">{category}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {options.map(option => (
           <button
-            key={option}
-            onClick={() => onSelect(option)}
-            className={`p-4 rounded-xl text-left transition-all duration-200 transform hover:scale-105 ${
-              selectedValue === option
-                ? `bg-gradient-to-r ${CATEGORY_COLORS[category]} text-white shadow-lg scale-105`
-                : 'bg-white/60 hover:bg-white/80 text-gray-700 shadow-md hover:shadow-lg'
-            }`}
+            key={option.id}
+            onClick={() => onSelect(option.name)} // Use name for prompt, id for internal key if needed
+            className={`p-4 rounded-md text-left transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-sky-400
+              ${selectedValue === option.name 
+                ? 'bg-indigo-500 text-white shadow-md ring-2 ring-indigo-600' 
+                : 'bg-sky-100 hover:bg-sky-200 text-indigo-800 shadow-sm'
+              }`}
           >
-            <span className="font-medium">{option}</span>
+            <span className="text-2xl mr-2">{option.emoji}</span>
+            <span className="font-medium">{option.name}</span>
           </button>
         ))}
       </div>
+      {selectedValue && (
+        <p className="mt-3 text-sm text-center text-indigo-600 font-medium">Selecionado para Theo: {selectedValue}</p>
+      )}
     </div>
   );
 };
