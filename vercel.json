@@ -4,11 +4,6 @@
   "framework": "vite",
   "installCommand": "pnpm install",
   "devCommand": "pnpm run dev",
-  "functions": {
-    "app/**/*.ts": {
-      "runtime": "@vercel/node"
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
